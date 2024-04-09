@@ -1,0 +1,60 @@
+library(tidyverse)
+library(ggpubr)
+library(rstatix)
+dat = read.csv("C:/Documents/Data.csv")
+
+dat
+#Sl.no    Year   Slope
+1        2013   10.2 
+2        2013   11.5
+3        2016   20.1
+.        ....   ...
+.        ....   ...
+.        ....   ...
+5        2023   15.2 
+
+#carry out anova test with post adhoc test
+compare_means(Slope~Year, data = dat, method = "anova")
+TukeyHSD(aov(Slope~as.factor(Year)))
+
+#create a dataset with p values information gathered from TukeyHSD results
+dat$Year<- factor(dat$Year)
+set.seed(123)
+dat%>% sample_n_by(Year, size = 2)
+stat.test <- tibble::tribble(
+  ~group1, ~group2,   ~p.adj,   ~p.adj.signif,
+  "2016_",     "2013_", 0.0000000, "***",
+  "2019_",     "2013_", 0.1395886, "ns",
+  "2023_",     "2013_", 0.0053882, "**",
+  "2019_",     "2016_", 0.0000000, "***",
+  "2023_",     "2016_", 0.0000000, "***",
+  "2023_",     "2019_", 0.6709546, "ns"
+)
+stat.test
+# A tibble: 6 × 4
+  group1 group2   p.adj p.adj.signif
+  <chr>  <chr>    <dbl> <chr>       
+1 2016_  2013_  0       ***         
+2 2019_  2013_  0.140   ns          
+3 2023_  2013_  0.00539 **          
+4 2019_  2016_  0       ***         
+5 2023_  2016_  0       ***         
+6 2023_  2019_  0.671   ns 
+
+#Create the plot, need to install Hmisc package as well
+theme_set(
+  theme_classic()+
+    theme(legend.position = "top")
+)
+
+e<-ggplot(dat, aes( x = Year, y = Slope))
+e
+
+e+geom_violin(trim = FALSE, aes(fill = Year))+
+  geom_boxplot(width = 0.1, color = "grey", alpha = 0.2)+
+  stat_summary(fun.data = "mean_sdl", fun.args = list(mult =1), 
+    geom = "pointrange", color = "black")+
+  stat_pvalue_manual(stat.test, y.position = 45,
+                     step.increase = 0.1,label = "p.adj.signif")
+
+
